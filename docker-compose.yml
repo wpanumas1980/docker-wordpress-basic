@@ -1,12 +1,26 @@
 version: '3.1'
 
 services:
-
+  traefik:
+    image: traefik:latest
+    container_name: traefik
+    restart: always
+    command:
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+    ports:
+      - 80:80
+      - 443:443
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - proxy
   wordpress:
     image: wordpress
     #restart: always
-    ports:
-      - 8080:80
     environment:
       WORDPRESS_DB_HOST: db
       WORDPRESS_DB_USER: admin
@@ -14,7 +28,13 @@ services:
       WORDPRESS_DB_NAME: wordpress_database
     volumes:
       - wordpress:/var/www/html
-
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=proxy"
+      - "traefik.http.routers.strapi.entrypoints=web"
+      - "traefik.http.routers.strapi.rule=Host(`logisticinvoice.apithai.dev`)"
+    networks:
+      - proxy
   db:
     image: mysql:5.7
     # restart: always
@@ -25,7 +45,11 @@ services:
       MYSQL_RANDOM_ROOT_PASSWORD: '1'
     volumes:
       - db:/var/lib/mysql
-
+    networks:
+      - proxy
 volumes:
   wordpress:
   db:
+networks:
+  proxy:
+    external: true
